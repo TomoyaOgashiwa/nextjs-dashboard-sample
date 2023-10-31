@@ -171,7 +171,9 @@ export async function fetchInvoiceById(id: string) {
 
     return invoice[0];
   } catch (error) {
-    console.error('Database Error:', error);
+    // chapter-12: throw new Errorにしないとundefinedが返される関数と見做してしまう
+    console.log('Database Error:', error);
+    throw new Error('Database Error');
   }
 }
 
