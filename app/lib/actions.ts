@@ -7,23 +7,55 @@ import { redirect } from "next/navigation"
 
 const InvoiceSchema = z.object({
   id: z.string(),
-  customerId: z.string(),
-  amount: z.coerce.number(),
-  status: z.enum(['pending', 'paid']),
+  // customerId - Zod already throws an error if the customer field is empty as it expects a type string. But let's add a friendly message if the user doesn't select a customer
+  customerId: z.string({
+    invalid_type_error: 'Please select a customer'
+  }),
+
+  // amount - Since you are coercing the amount type from string to number, it'll default to zero if the string is empty. Let's tell Zod we always want the amount greater than 0 with the .gt() function
+  amount: z.coerce.number().gt(0, {message: 'Please enter an amount greater than $0.'}),
+
+  // status - Zod already throws an error if the status field is empty as it expects "pending" or "paid". Let's also add a friendly message if the user doesn't select a status
+  status: z.enum(['pending', 'paid'], {
+    invalid_type_error: 'Please select an invoice status.',
+  }),
   date: z.string()
 })
 
 const CreateInvoice = InvoiceSchema.omit({id: true, date: true})
 
-export async function createInvoice(formData: FormData){
-  const {customerId, amount, status} = CreateInvoice.parse({
+// This is temporary until @types/react-dom is updated
+export type State = {
+  errors?: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+  };
+  message?: string | null;
+};
+
+// prevState - contains the state passed from the useFormState hook. You won't be using it in the action in this example, but it's a required prop
+export async function createInvoice(prevState: State, formData: FormData){
+  // Validate form fields using Zod
+  // safeParse() will return an object containing either a success or error field. This will help handle validation more gracefully without having place this logic inside the try/catch block.
+  const validatedFields = CreateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
-    status: formData.get('status')
-  })
+    status: formData.get('status'),
+  });
 
-  const amountInCents = amount * 100
-  const date = new Date().toISOString().split('T')[0]
+  // If form validation fails, return errors early. Otherwise, continue.
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Create Invoice.',
+    };
+  }
+
+  // Prepare data for insertion into the database
+  const { customerId, amount, status } = validatedFields.data;
+  const amountInCents = amount * 100;
+  const date = new Date().toISOString().split('T')[0];
 
   try {
     await sql`
@@ -39,16 +71,24 @@ export async function createInvoice(formData: FormData){
 }
 
 // Use Zod to update the expected types
-const UpdateInvoice = InvoiceSchema.omit({ date: true });
+const UpdateInvoice = InvoiceSchema.omit({ id: true, date: true });
 
-export async function updateInvoice(id: string, formData: FormData) {
-  const { customerId, amount, status } = UpdateInvoice.parse({
-    id: formData.get('id'), // chapter-12: 公式サイトには記載なしだが、これがないとzodエラーになる（それかzodでidを無視させるか）
+export async function updateInvoice(id: string, prevState: State,  formData: FormData) {
+  const validatedFields = UpdateInvoice.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status'),
   });
- 
+
+    // If form validation fails, return errors early. Otherwise, continue.
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: 'Missing Fields. Failed to Edit Invoice.',
+    };
+  }
+
+  const {customerId, amount, status} = validatedFields.data
   const amountInCents = amount * 100;
  
   try {
