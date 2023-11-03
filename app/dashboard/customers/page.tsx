@@ -1,3 +1,10 @@
+import { Metadata } from "next";
+
+// exportしないと反映されない
+export const metadata: Metadata = {
+  title: "Customers",
+};
+
 export default function Page({
   searchParams,
 }: {
