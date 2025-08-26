@@ -49,7 +49,7 @@ export type State = {
   message?: string | null;
 };
 
-// prevState - contains the state passed from the useFormState hook. You won't be using it in the action in this example, but it's a required prop
+// prevState - contains the state passed from the useActionState hook. You won't be using it in the action in this example, but it's a required prop
 export async function createInvoice(prevState: State, formData: FormData){
   // Validate form fields using Zod
   // safeParse() will return an object containing either a success or error field. This will help handle validation more gracefully without having place this logic inside the try/catch block.
