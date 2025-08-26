@@ -5,12 +5,14 @@ import { notFound } from "next/navigation";
 import { Metadata } from "next";
 
 // exportしないと反映されない
-export const metadata: Metadata = {
-  title: "Invoices Edit",
-};
+export const metadata: Metadata = { title: "Invoices Edit" };
 
-export default async function Page({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
   const [invoice, customers] = await Promise.all([
     fetchInvoiceById(id),
     fetchCustomers(),
